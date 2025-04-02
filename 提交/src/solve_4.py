@@ -8,7 +8,7 @@ import sys
 yin2pr = {}
 id2pr = []
 pr2id = {}
-PREFIX = '.'
+PREFIX = '../data'
 AAA = PREFIX + '/word2pinyin.txt'
 BBB = PREFIX + '/1_word.txt'
 CCC = PREFIX + '/2_word.txt'
@@ -46,9 +46,6 @@ with open(FFF, 'r', encoding='utf-8') as f5:
     data5 = json.load(f5)
 
 
-len_pr = len(id2pr)
-cnt_pr = [0] * len_pr
-
 head_pr_cnt = {}
 tail_pr_cnt = {}
 head_cnt = 0
@@ -58,6 +55,10 @@ for a, b in tqdm(data5.items()):
     tail_pr_cnt[(a[0], a[2:])] = b['tail_cnt']
     head_cnt += b['head_cnt']
     tail_cnt += b['tail_cnt']
+
+
+len_pr = len(id2pr)
+cnt_pr = [0] * len_pr
 
 for a, b in tqdm(data1.items()):
     for _ in range(len(b['words'])):
@@ -101,56 +102,25 @@ def get_cnt4(x, y, z, s): # cnt(x, y, z, s)
     strr = x[0] + y[0] + z[0] + s[0] +  x[1] + ' ' + y[1] + ' ' + z[1] + ' ' + s[1]
     return DIC.get(strr, 0)
 
-ff = {}
-
 def P2(x, y): # P(y | x)
-#    if (x, y) in ff:
-#        return ff[(x, y)]
     a = get_cnt2(x, y) / cnt_pr[pr2id[x]] if cnt_pr[pr2id[x]] != 0 else 0
-#    ff[(x, y)] = 0.9 * a + 0.1 * cnt_pr[pr2id[y]] / total_cnt
-#    return ff[(x, y)]
-    return a + cnt_pr[pr2id[y]] / total_cnt
+    return 0.98 * a + 0.02 * cnt_pr[pr2id[y]] / total_cnt
 
 def P3(x, y, z): # P(z | x,y)
-#    if (x, y, z) in ff:
-#        return ff[(x, y, z)]
     we = get_cnt2(x, y)
     a = get_cnt3(x, y, z) / we if we != 0 else 0
-#    ff[(x, y, z)] = 0.7 * a + 0.3 * P2(y, z)
-#    return ff[(x, y, z)]
-    return a + P2(y, z)
+    return 0.7 * a + 0.3 * P2(y, z)
 
 def P4(x, y, z, w): # P(w | x,y,z)
-#    if (x, y, z, w) in ff:
-#        return ff[(x, y, z, w)]
-    
-#    zz = pr2id[z]
-#    ww = pr2id[w]
     A = get_cnt4(x, y, z, w)
     B = get_cnt3(x, y, z)
     s1 = A / B if B != 0 else 0
 
-    return 0.6 * s1 + 0.4 * P3(y, z, w)
-
-def P(y, z, w): # P(w | x,y,z)
-    zz = pr2id[z]
-    ww = pr2id[w]    
-    A = get_cnt3(y, z, w)
-    B = get_cnt2(y, z)
-    s2 = A / B if B != 0 else 0
-    
-    A = get_cnt2(z, w)
-    B = cnt_pr[zz]
-    s3 = A / B if B != 0 else 0
-    
-    s4 = cnt_pr[ww] / total_cnt
-    
-    return s2 * 0.6 + s3 * 0.398 + s4 * 0.002
-
+    return 0.9 * s1 + 0.1 * P3(y, z, w)
 
 def work(words):
     MAX = float(999999999)
-    eps = float(1e-20)
+    eps = float(1e-40)
     
     num = len(words)
     f = [{}, {}] # now 3 与 last 3
@@ -171,8 +141,9 @@ def work(words):
         for i1 in yin2pr[words[0]]:
             for i2 in yin2pr[words[1]]:
                 tmp = get_cnt2(i1, i2) / cnt_pr[pr2id[i1]] if cnt_pr[pr2id[i1]] != 0 else 0
- #               tmp = tmp * 0.98 + cnt_pr[pr2id[i2]] / total_cnt * 0.02
-                tmp *= 0.5 * head_pr_cnt.get(i1, 0) / head_cnt + 0.5 * cnt_pr[pr2id[i1]] / total_cnt
+                if isclose(tmp, 0, rel_tol=eps):
+                    tmp = eps
+                tmp = tmp * 0.98 + cnt_pr[pr2id[i2]] / total_cnt * 0.02
                 if isclose(tmp, 0, rel_tol=eps):
                     tmp = eps
                 tmp = -log(tmp)
@@ -183,55 +154,64 @@ def work(words):
 
     for i1 in yin2pr[words[0]]:
         for i2 in yin2pr[words[1]]:
-            # P(i1 | h)
-            e = 0.1 * head_pr_cnt.get(i1, 0) / head_cnt + 0.9 * cnt_pr[pr2id[i1]] / total_cnt
-            
-            # P(i2 | i1 h) = P(i2 | i1)
-            o = P2(i1, i2)
+            for i3 in yin2pr[words[2]]:
+                # P(i1 | h)
+                e = 0.5 * head_pr_cnt.get(i1, 0) / head_cnt + 0.5 * cnt_pr[pr2id[i1]] / total_cnt
+                
+                # P(i2 | i1 h) = P(i2 | i1)
+                o = P2(i1, i2)
 
-            if isclose(e, 0, rel_tol=eps):
-                e = -log(eps)
-            else :
-                e = -log(e)
-            
-            if isclose(o, 0, rel_tol=eps):
-                o = -log(eps)
-            else :
-                o = -log(o)
-            
-            tmp = e + o
-            if tmp < QQQ:
-                QQQ = tmp
-                ANS = i1[0] + i2[0]
-            f[0][(i1, i2)] = tmp
-            ans[0][(i1, i2)] = i1[0] + i2[0]
+                l = P3(i1, i2, i3)
+                
+                if isclose(e, 0, rel_tol=eps):
+                    e = -log(eps)
+                else :
+                    e = -log(e)
+                
+                if isclose(o, 0, rel_tol=eps):
+                    o = -log(eps)
+                else :
+                    o = -log(o)
+                
+                if isclose(l, 0, rel_tol=eps):
+                    l = -log(eps)
+                else :
+                    l = -log(l)
+                
+                tmp = e + o + l
+                if tmp < QQQ:
+                    QQQ = tmp
+                    ANS = i1[0] + i2[0] + i3[0]
+                f[0][(i1, i2, i3)] = tmp
+                ans[0][(i1, i2, i3)] = i1[0] + i2[0] + i3[0]
     
-    for i in range(2, num):
-        now = (i % 2) ^ 1
+    for i in range(3, num):
+        now = i & 1
         f[now] = {}
         ans[now] = {}
         Q = MAX
-        for i1 in yin2pr[words[i - 2]]:
-            for i2 in yin2pr[words[i - 1]]:
-                if (i1, i2) not in f[now ^ 1]:
+        for uu, qq in f[now ^ 1].items():
+            i1 = uu[0]
+            i2 = uu[1]
+            i3 = uu[2]
+            for i4 in yin2pr[words[i]]:
+                tmp = P4(i1, i2, i3, i4)
+                if isclose(tmp, 0, rel_tol=eps):
+                    tmp = eps
+                tmp = qq - log(tmp)
+                threshold = 11 * num
+                if tmp > threshold:
                     continue
-                for i3 in yin2pr[words[i]]:
-                    tmp = P3(i1, i2, i3)
-                    if isclose(tmp, 0, rel_tol=eps):
-                        tmp = eps
-                    tmp = f[now ^ 1][(i1, i2)] - log(tmp)
-#                    if tmp > 7 * num:
-#                        continue
-                    if (i2, i3) not in f[now]:
-                        f[now][(i2, i3)] = tmp
-                        ans[now][(i2, i3)] = ans[now ^ 1][(i1, i2)] + i3[0]
-                    elif f[now][(i2, i3)] > tmp:
-                        f[now][(i2, i3)] = tmp
-                        ans[now][(i2, i3)] = ans[now ^ 1][(i1, i2)] + i3[0]
-                    if f[now][(i2, i3)] < Q:
-                        Q = f[now][(i2, i3)]
-                        ANS = ans[now][(i2, i3)]
-    return ANS #, Q / num
+                if (i2, i3, i4) not in f[now]:
+                    f[now][(i2, i3, i4)] = tmp
+                    ans[now][(i2, i3, i4)] = ans[now ^ 1][(i1, i2, i3)] + i4[0]
+                elif f[now][(i2, i3, i4)] > tmp:
+                    f[now][(i2, i3, i4)] = tmp
+                    ans[now][(i2, i3, i4)] = ans[now ^ 1][(i1, i2, i3)] + i4[0]
+                if f[now][(i2, i3, i4)] < Q:
+                    Q = f[now][(i2, i3, i4)]
+                    ANS = ans[now][(i2, i3, i4)]
+    return ANS
 
 for line in tqdm(sys.stdin):
     line_ = line.strip()

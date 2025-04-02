@@ -6,7 +6,7 @@ A = []
 B = []
 C = {}
 
-with open('../拼音汉字表/拼音汉字表//拼音汉字表.txt', 'r', encoding='gbk') as f:
+with open('../data/拼音汉字表.txt', 'r', encoding='gbk') as f:
     for line in tqdm(f.readlines()):
         line_ = line.strip()
         ww = line_.split(' ')
@@ -16,7 +16,7 @@ with open('../拼音汉字表/拼音汉字表//拼音汉字表.txt', 'r', encodi
                 C[ww[j]] = 1
             A.append((ww[j], ww[0]))
             
-with open('./word2pinyin.txt', 'w', encoding='utf-8') as f:
+with open('../data/word2pinyin.txt', 'w', encoding='utf-8') as f:
     for i in A:
         f.write(i[0] + ' ' + i[1] + '\n')
 
@@ -122,7 +122,7 @@ def solve(fp, lll, rrr):
     if len(ALL) > 0:
         add(ALL)
 
-    print("_____________________________________________________")
+#    print("_____________________________________________________")
     
 
 def DEL(dic, num):
@@ -145,13 +145,8 @@ def DEL(dic, num):
         
 
 def Solve(aaa, lll, rrr):
-    p1t = "./1_word" + aaa[-5] + f" {lll} to {rrr}" + ".txt"
-    p2t = "./2_word" + aaa[-5] + f" {lll} to {rrr}" + ".txt"
-    p3t = "./3_word" + aaa[-5] + f" {lll} to {rrr}" + ".txt"
-    p4t = "./4_word" + aaa[-5] + f" {lll} to {rrr}" + ".txt"
-    p5t = "./ht_word" + aaa[-5] + f" {lll} to {rrr}" + ".txt"
 
-    with open('../语料库/语料库/sina_news_gbk/' + aaa, 'r', encoding='gbk') as f:
+    with open('../corpus/sina_news_gbk/' + aaa, 'r', encoding='gbk') as f:
         solve(f, lll, rrr)
     
     dic = {}
@@ -162,9 +157,6 @@ def Solve(aaa, lll, rrr):
         else :
             dic[pr[1]] = {'words': [pr[0]], 'counts': [cnt]}
             
-    with open(p1t, 'w', encoding='utf-8') as f:
-        json.dump(dic, f, ensure_ascii=False, indent=4)
-        
     dic = {}
     for lastpr, a in prpr_cnt.items():
         for nowpr, cnt in a.items():
@@ -176,8 +168,6 @@ def Solve(aaa, lll, rrr):
             else :
                 dic[yins] = {'words': [zis], 'counts': [cnt]}
 
-    with open(p2t, 'w', encoding='utf-8') as f:
-        json.dump(dic, f, ensure_ascii=False, indent=4)
     
     
     for a, b in prprpr_cnt.items():
@@ -194,21 +184,59 @@ def Solve(aaa, lll, rrr):
     DEL(prprpr_cnt, 5)
     DEL(prprprpr_cnt, 10)
     
-    with open(p3t, 'w', encoding='utf-8') as f:
-        json.dump(prprpr_cnt, f, ensure_ascii=False, indent=4)
-            
-    with open(p4t, 'w', encoding='utf-8') as f:
-        json.dump(prprprpr_cnt, f, ensure_ascii=False, indent=4)
-      
-    with open(p5t, 'w', encoding='utf-8') as f:
-        A = {}
-        for a, b in head_cnt.items():
-            A[a[0] + ' ' + a[1]] = {'head_cnt' : b, 'tail_cnt' : 0}
-        for a, b in tail_cnt.items():
-            if a[0] + ' ' + a[1] in A:
-                A[a[0] + ' ' + a[1]]['tail_cnt'] = b
-            else :
-                A[a[0] + ' ' + a[1]] = {'head_cnt' : 0, 'tail_cnt' : b}
-        json.dump(A, f, ensure_ascii=False, indent=4)    
+Solve("2016-04.txt", 1, 120000)
+Solve("2016-05.txt", 1, 120000)
+Solve("2016-06.txt", 1, 120000)
+Solve("2016-07.txt", 1, 120000)
+Solve("2016-08.txt", 1, 120000)
+Solve("2016-09.txt", 1, 120000)
+Solve("2016-10.txt", 1, 120000)
+Solve("2016-11.txt", 1, 120000)
 
-Solve("2016-11.txt", 1, 100000)
+p1t = "../data/1_word.txt"
+p2t = "../data/2_word.txt"
+p3t = "../data/3_word.txt"
+p4t = "../data/4_word.txt"
+p5t = "../data/ht_word.txt"
+
+dic = {}
+for pr, cnt in pr_cnt.items():
+    if pr[1] in dic:
+        dic[pr[1]]['words'].append(pr[0])
+        dic[pr[1]]['counts'].append(cnt)
+    else :
+        dic[pr[1]] = {'words': [pr[0]], 'counts': [cnt]}
+        
+with open(p1t, 'w', encoding='utf-8') as f:
+    json.dump(dic, f, ensure_ascii=False, indent=4)
+
+dic = {}
+for lastpr, a in prpr_cnt.items():
+    for nowpr, cnt in a.items():
+        yins = lastpr[1] + ' ' + nowpr[1]
+        zis = lastpr[0] + ' ' + nowpr[0]
+        if yins in dic:
+            dic[yins]['words'].append(zis)
+            dic[yins]['counts'].append(cnt)
+        else :
+            dic[yins] = {'words': [zis], 'counts': [cnt]}
+
+with open(p2t, 'w', encoding='utf-8') as f:
+    json.dump(dic, f, ensure_ascii=False, indent=4)
+
+with open(p3t, 'w', encoding='utf-8') as f:
+    json.dump(prprpr_cnt, f, ensure_ascii=False, indent=4)
+        
+with open(p4t, 'w', encoding='utf-8') as f:
+    json.dump(prprprpr_cnt, f, ensure_ascii=False, indent=4)
+    
+with open(p5t, 'w', encoding='utf-8') as f:
+    A = {}
+    for a, b in head_cnt.items():
+        A[a[0] + ' ' + a[1]] = {'head_cnt' : b, 'tail_cnt' : 0}
+    for a, b in tail_cnt.items():
+        if a[0] + ' ' + a[1] in A:
+            A[a[0] + ' ' + a[1]]['tail_cnt'] = b
+        else :
+            A[a[0] + ' ' + a[1]] = {'head_cnt' : 0, 'tail_cnt' : b}
+    json.dump(A, f, ensure_ascii=False, indent=4)    

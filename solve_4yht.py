@@ -1,6 +1,5 @@
 import json
 from math import log, isclose
-from torch import threshold
 from tqdm import tqdm
 import sys
 
@@ -106,23 +105,25 @@ def get_cnt4(x, y, z, s): # cnt(x, y, z, s)
 ff = {}
 
 def P2(x, y): # P(y | x)
-    if (x, y) in ff:
-        return ff[(x, y)]
+#    if (x, y) in ff:
+#        return ff[(x, y)]
     a = get_cnt2(x, y) / cnt_pr[pr2id[x]] if cnt_pr[pr2id[x]] != 0 else 0
-    ff[(x, y)] = 0.98 * a + 0.02 * cnt_pr[pr2id[y]] / total_cnt
-    return ff[(x, y)]
+#    ff[(x, y)] = 0.9 * a + 0.1 * cnt_pr[pr2id[y]] / total_cnt
+#    return ff[(x, y)]
+    return 0.98 * a + 0.02 * cnt_pr[pr2id[y]] / total_cnt
 
 def P3(x, y, z): # P(z | x,y)
-    if (x, y, z) in ff:
-        return ff[(x, y, z)]
+#    if (x, y, z) in ff:
+#        return ff[(x, y, z)]
     we = get_cnt2(x, y)
     a = get_cnt3(x, y, z) / we if we != 0 else 0
-    ff[(x, y, z)] = 0.98 * a + 0.02 * P2(y, z)
-    return ff[(x, y, z)]
+#    ff[(x, y, z)] = 0.7 * a + 0.3 * P2(y, z)
+#    return ff[(x, y, z)]
+    return 0.7 * a + 0.3 * P2(y, z)
 
 def P4(x, y, z, w): # P(w | x,y,z)
-    if (x, y, z, w) in ff:
-        return ff[(x, y, z, w)]
+#    if (x, y, z, w) in ff:
+#        return ff[(x, y, z, w)]
     
 #    zz = pr2id[z]
 #    ww = pr2id[w]
@@ -130,8 +131,9 @@ def P4(x, y, z, w): # P(w | x,y,z)
     B = get_cnt3(x, y, z)
     s1 = A / B if B != 0 else 0
 
-    ff[(x, y, z, w)] = 0.98 * s1 + 0.02 * P3(y, z, w)
-    return ff[(x, y, z, w)]
+    return 0.9 * s1 + 0.1 * P3(y, z, w)
+ #   ff[(x, y, z, w)] = 0.6 * s1 + 0.4 * P3(y, z, w)
+ #   return ff[(x, y, z, w)]
 
     # A = get_cnt3(y, z, w)
     # B = get_cnt2(y, z)
@@ -197,7 +199,7 @@ def work(words):
         for i2 in yin2pr[words[1]]:
             for i3 in yin2pr[words[2]]:
                 # P(i1 | h)
-                e = 0.1 * head_pr_cnt.get(i1, 0) / head_cnt + 0.9 * cnt_pr[pr2id[i1]] / total_cnt
+                e = 0.5 * head_pr_cnt.get(i1, 0) / head_cnt + 0.5 * cnt_pr[pr2id[i1]] / total_cnt
                 
                 tt = get_cnt2(i1, i2)
                 # P(i2 | i1 h) = P(i2 | i1)
@@ -250,7 +252,8 @@ def work(words):
     #            threshold1 = 7 * num
     #            threshold2 = 12 * (i + 1)  # 前面慢慢搜
     #            threshold = max(threshold1, threshold2)
-                threshold = 10 * (i + 1) if i > 10 else 12 * (i + 1)
+#                threshold = 10 * (i + 1) if i > 10 else 12 * (i + 1)
+                threshold = 11 * num
                 if tmp > threshold:
                     continue
                 if (i2, i3, i4) not in f[now]:

@@ -8,7 +8,7 @@ import sys
 yin2pr = {}
 id2pr = []
 pr2id = {}
-PREFIX = '.'
+PREFIX = '../data'
 AAA = PREFIX + '/word2pinyin.txt'
 BBB = PREFIX + '/1_word.txt'
 CCC = PREFIX + '/2_word.txt'
@@ -101,52 +101,22 @@ def get_cnt4(x, y, z, s): # cnt(x, y, z, s)
     strr = x[0] + y[0] + z[0] + s[0] +  x[1] + ' ' + y[1] + ' ' + z[1] + ' ' + s[1]
     return DIC.get(strr, 0)
 
-ff = {}
 
 def P2(x, y): # P(y | x)
-#    if (x, y) in ff:
-#        return ff[(x, y)]
     a = get_cnt2(x, y) / cnt_pr[pr2id[x]] if cnt_pr[pr2id[x]] != 0 else 0
-#    ff[(x, y)] = 0.9 * a + 0.1 * cnt_pr[pr2id[y]] / total_cnt
-#    return ff[(x, y)]
     return a + cnt_pr[pr2id[y]] / total_cnt
 
 def P3(x, y, z): # P(z | x,y)
-#    if (x, y, z) in ff:
-#        return ff[(x, y, z)]
     we = get_cnt2(x, y)
     a = get_cnt3(x, y, z) / we if we != 0 else 0
-#    ff[(x, y, z)] = 0.7 * a + 0.3 * P2(y, z)
-#    return ff[(x, y, z)]
     return a + P2(y, z)
 
 def P4(x, y, z, w): # P(w | x,y,z)
-#    if (x, y, z, w) in ff:
-#        return ff[(x, y, z, w)]
-    
-#    zz = pr2id[z]
-#    ww = pr2id[w]
     A = get_cnt4(x, y, z, w)
     B = get_cnt3(x, y, z)
     s1 = A / B if B != 0 else 0
 
     return 0.6 * s1 + 0.4 * P3(y, z, w)
-
-def P(y, z, w): # P(w | x,y,z)
-    zz = pr2id[z]
-    ww = pr2id[w]    
-    A = get_cnt3(y, z, w)
-    B = get_cnt2(y, z)
-    s2 = A / B if B != 0 else 0
-    
-    A = get_cnt2(z, w)
-    B = cnt_pr[zz]
-    s3 = A / B if B != 0 else 0
-    
-    s4 = cnt_pr[ww] / total_cnt
-    
-    return s2 * 0.6 + s3 * 0.398 + s4 * 0.002
-
 
 def work(words):
     MAX = float(999999999)
@@ -171,7 +141,8 @@ def work(words):
         for i1 in yin2pr[words[0]]:
             for i2 in yin2pr[words[1]]:
                 tmp = get_cnt2(i1, i2) / cnt_pr[pr2id[i1]] if cnt_pr[pr2id[i1]] != 0 else 0
- #               tmp = tmp * 0.98 + cnt_pr[pr2id[i2]] / total_cnt * 0.02
+                if isclose(tmp, 0, rel_tol=eps):
+                    tmp = eps
                 tmp *= 0.5 * head_pr_cnt.get(i1, 0) / head_cnt + 0.5 * cnt_pr[pr2id[i1]] / total_cnt
                 if isclose(tmp, 0, rel_tol=eps):
                     tmp = eps
@@ -220,8 +191,6 @@ def work(words):
                     if isclose(tmp, 0, rel_tol=eps):
                         tmp = eps
                     tmp = f[now ^ 1][(i1, i2)] - log(tmp)
-#                    if tmp > 7 * num:
-#                        continue
                     if (i2, i3) not in f[now]:
                         f[now][(i2, i3)] = tmp
                         ans[now][(i2, i3)] = ans[now ^ 1][(i1, i2)] + i3[0]
@@ -231,7 +200,7 @@ def work(words):
                     if f[now][(i2, i3)] < Q:
                         Q = f[now][(i2, i3)]
                         ANS = ans[now][(i2, i3)]
-    return ANS #, Q / num
+    return ANS
 
 for line in tqdm(sys.stdin):
     line_ = line.strip()
